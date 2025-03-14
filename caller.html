@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Table</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #eca1a6, #d5f4e6); /* Gradient background */
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+    }
+    #randomNumberDisplay {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    .randomNumber {
+        font-weight: normal;
+    }
+    .highlight {
+        font-weight: bold;
+        font-size: 32px;
+    }
+    table {
+        border-collapse: collapse;
+        width: 80%;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        font-size: 18px;
+        padding: 20px;
+    }
+    /* Custom class to change color on click */
+    .selected {
+        background-color: #ffcccb; /* Light red */
+    }
+    .picked {
+        background-color: #b6e2ff; /* Light blue */
+    }
+
+    /* Style for buttons */
+    .button-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .button-container button {
+        margin: 0 10px;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        animation-duration: 0.5s;
+    }
+
+    .button-container button:hover {
+        background-color: #45a049;
+    }
+
+    .button-container button:active {
+        animation-name: buttonClick;
+    }
+
+    @keyframes buttonClick {
+        0% { transform: scale(1); }
+        50% { transform: scale(0.9); }
+        100% { transform: scale(1); }
+    }
+</style>
+<script type="text/javascript" src="https://tiiny.host/ad-script.js"></script><script defer data-domain="vasu-tambola-game.tiiny.site" src="https://analytics.tiiny.site/js/plausible.js"></script></head>
+<body>
+
+<div id="randomNumberDisplay"></div>
+
+<table id="numberTable">
+    <tr>
+        <th colspan="10"> Tambola Numbers </th>
+    </tr>
+</table>
+
+<div class="button-container">
+    <button id="pauseButton" onclick="pauseGame()" disabled>Pause</button>
+    <button id="playButton" onclick="resumeGame()">Play</button>
+    <button onclick="restartGame()">Restart</button>
+</div>
+
+<script>
+    var table = document.getElementById('numberTable');
+    for (var i = 1; i <= 9; i++) {
+        var row = table.insertRow();
+        for (var j = 1; j <= 10; j++) {
+            var cell = row.insertCell();
+            var number = (i - 1) * 10 + j;
+            cell.textContent = number;
+            cell.dataset.number = number; // Storing the number in data attribute
+        }
+    }
+
+    var randomNumberDisplay = document.getElementById('randomNumberDisplay');
+    var randomNumbers = [];
+    var allNumbersPicked = false; // Flag to track if all numbers are picked
+    var intervalId; // Declare intervalId globally
+
+    function generateSequence(start, end) {
+        var sequence = [];
+        for (var i = start; i <= end; i++) {
+            sequence.push(i);
+        }
+        return sequence;
+    }
+
+    function shuffleArray(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+        return array;
+    }
+    var shuffledNumbers = shuffleArray(generateSequence(1, 90));
+    var currentIndex = 0;
+
+    function getNextRandomNumber() {
+        if (currentIndex >= shuffledNumbers.length) {
+            allNumbersPicked = true;
+            return null;
+        }
+        var nextNumber = shuffledNumbers[currentIndex];
+        currentIndex++;
+        return nextNumber;
+    }
+
+    function updateRandomNumberDisplay() {
+        if (allNumbersPicked) {
+            clearInterval(intervalId); // Stop counter if all numbers are picked
+            return;
+        }
+        var randomNumber = getNextRandomNumber();
+        if (randomNumber === null) {
+            return;
+        }
+        randomNumberDisplay.innerHTML = '';
+        randomNumbers.push(randomNumber);
+        if (randomNumbers.length > 3) {
+            randomNumbers.shift();
+        }
+        randomNumbers.forEach(function(number, index) {
+            var randomNumberSpan = document.createElement('span');
+            randomNumberSpan.textContent = number;
+            randomNumberSpan.classList.add('randomNumber');
+            if (index === randomNumbers.length - 1) {
+                randomNumberSpan.classList.add('highlight');
+            }
+            randomNumberDisplay.appendChild(randomNumberSpan);
+            if (index !== randomNumbers.length - 1) {
+                randomNumberDisplay.appendChild(document.createTextNode(', '));
+            }
+        });
+        highlightPickedNumber(randomNumber);
+        
+        // Speak the generated random number
+        speakRandomNumber(randomNumber);
+    }
+
+    function highlightPickedNumber(number) {
+        var cells = document.querySelectorAll('td[data-number="' + number + '"]');
+        cells.forEach(function(cell) {
+            cell.classList.add('picked');
+        });
+    }
+
+    function generateRandomNumber() {
+        updateRandomNumberDisplay();
+    }
+    
+    intervalId = setInterval(generateRandomNumber, 5000); // Update every second
+
+    // Function to speak the generated random number
+    function speakRandomNumber(number) {
+        var utterance = new SpeechSynthesisUtterance(number.toString());
+        speechSynthesis.speak(utterance);
+    }
+
+    // Function to pause the game
+    function pauseGame() {
+        clearInterval(intervalId);
+        document.getElementById('pauseButton').disabled = true; // Disable the "Pause" button
+        document.getElementById('playButton').disabled = false; // Enable the "Play" button
+    }
+
+    // Function to resume the game
+    function resumeGame() {
+        intervalId = setInterval(generateRandomNumber, 5000); // Resume the interval
+        document.getElementById('pauseButton').disabled = false; // Enable the "Pause" button
+        document.getElementById('playButton').disabled = true; // Disable the "Play" button
+    }
+
+    // Function to restart the game (reload the page)
+    function restartGame() {
+      var confirmed = window.confirm('Are you sure you want to Reset the board');
+        if (confirmed) {
+         window.location.reload();
+
+        }
+    }
+
+    // On load, set the game status to paused and rename the "Resume" button as "Play"
+    window.onload = function() {
+        pauseGame();
+        document.getElementById('playButton').textContent = "Play";
+    };
+</script>
+
+</body>
+</html>
