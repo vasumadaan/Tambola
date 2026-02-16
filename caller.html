@@ -1,235 +1,244 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Number Table</title>
+<title>Caller</title>
+
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: linear-gradient(to right, #eca1a6, #d5f4e6); /* Gradient background */
-        margin: 0;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-    }
-    #randomNumberDisplay {
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-    .randomNumber {
-        font-weight: normal;
-    }
-    .highlight {
-        font-weight: bold;
-        font-size: 32px;
-    }
-    table {
-        border-collapse: collapse;
-        width: 80%;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    th, td {
-        border: 1px solid #ddd;
-        padding: 10px;
-        text-align: center;
-    }
-    th {
-        background-color: #f2f2f2;
-        font-weight: bold;
-        font-size: 18px;
-        padding: 20px;
-    }
-    /* Custom class to change color on click */
-    .selected {
-        background-color: #ffcccb; /* Light red */
-    }
-    .picked {
-        background-color: #b6e2ff; /* Light blue */
-    }
+body {
+    font-family: Arial;
+    background: linear-gradient(to right,#eca1a6,#d5f4e6);
+    text-align:center;
+    padding:20px;
+}
 
-    /* Style for buttons */
-    .button-container {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+table {
+    border-collapse:collapse;
+    margin:auto;
+    background:white;
+    border-radius:10px;
+    box-shadow:0 6px 15px rgba(0,0,0,0.1);
+}
 
-    .button-container button {
-        margin: 0 10px;
-        padding: 10px 20px;
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        animation-duration: 0.5s;
-    }
+td,th {
+    border:1px solid #ddd;
+    padding:10px;
+    width:40px;
+}
 
-    .button-container button:hover {
-        background-color: #45a049;
-    }
+.picked {
+    background:#b6e2ff;
+}
 
-    .button-container button:active {
-        animation-name: buttonClick;
-    }
+.button-container {
+    margin-top:20px;
+}
 
-    @keyframes buttonClick {
-        0% { transform: scale(1); }
-        50% { transform: scale(0.9); }
-        100% { transform: scale(1); }
-    }
+button {
+    padding:10px 20px;
+    margin:5px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:16px;
+}
+
+.play { background:#4CAF50; color:white; }
+.pause { background:#f44336; color:white; }
+.speed { background:#2196F3; color:white; }
+
+#numberDisplayWrapper {
+    text-align: center;
+    font-size: 34px;
+    margin-bottom: 20px;
+}
+
+#previousNumbers {
+    color: rgba(0,0,0,0.45); /* faded black */
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+#randomNumberDisplay {
+    color: #e91e63;
+    font-weight: 700;
+    font-size: 42px;
+    margin-left: 5px;
+}
+
+
 </style>
-<script type="text/javascript" src="https://tiiny.host/ad-script.js"></script><script defer data-domain="vasu-tambola-game.tiiny.site" src="https://analytics.tiiny.site/js/plausible.js"></script></head>
+</head>
+
 <body>
 
-<div id="randomNumberDisplay"></div>
+<!-- SAME LINE DISPLAY -->
+<div id="numberDisplayWrapper">
+    <span id="previousNumbers"></span>
+    <span id="randomNumberDisplay"></span>
+</div>
 
 <table id="numberTable">
-    <tr>
-        <th colspan="10"> Tambola Numbers </th>
-    </tr>
+<tr><th colspan="10">Tambola Numbers</th></tr>
 </table>
 
 <div class="button-container">
-    <button id="pauseButton" onclick="pauseGame()" disabled>Pause</button>
-    <button id="playButton" onclick="resumeGame()">Play</button>
-    <button onclick="restartGame()">Restart</button>
+<button id="playPauseBtn" class="play">▶ Play</button>
+<button id="speedBtn" class="speed">Speed: Normal</button>
+<button onclick="restartGame()">Restart</button>
 </div>
 
 <script>
-    var table = document.getElementById('numberTable');
-    for (var i = 1; i <= 9; i++) {
-        var row = table.insertRow();
-        for (var j = 1; j <= 10; j++) {
-            var cell = row.insertCell();
-            var number = (i - 1) * 10 + j;
-            cell.textContent = number;
-            cell.dataset.number = number; // Storing the number in data attribute
-        }
+
+let table=document.getElementById("numberTable");
+
+// Build board
+for(let i=1;i<=9;i++){
+    let row=table.insertRow();
+    for(let j=1;j<=10;j++){
+        let cell=row.insertCell();
+        let num=(i-1)*10+j;
+        cell.textContent=num;
+        cell.dataset.number=num;
+    }
+}
+
+let numbers=[];
+let index=0;
+let isPlaying=false;
+let delayBetweenNumbers=1500;
+let timeoutId=null;
+let previousNumbers=[];
+
+const ones=["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"];
+const tensNames=["","Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+
+function getFunCall(num){
+
+    if(num<10){
+        return "Only number "+ones[num]+"!";
     }
 
-    var randomNumberDisplay = document.getElementById('randomNumberDisplay');
-    var randomNumbers = [];
-    var allNumbersPicked = false; // Flag to track if all numbers are picked
-    var intervalId; // Declare intervalId globally
+    let tens=Math.floor(num/10);
+    let unit=num%10;
 
-    function generateSequence(start, end) {
-        var sequence = [];
-        for (var i = start; i <= end; i++) {
-            sequence.push(i);
-        }
-        return sequence;
+    if(tens===unit){
+        return ones[tens]+" "+ones[unit]+" – "+num+"!";
     }
 
-    function shuffleArray(array) {
-        for (var i = array.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var temp = array[i];
-            array[i] = array[j];
-            array[j] = temp;
-        }
-        return array;
-    }
-    var shuffledNumbers = shuffleArray(generateSequence(1, 90));
-    var currentIndex = 0;
-
-    function getNextRandomNumber() {
-        if (currentIndex >= shuffledNumbers.length) {
-            allNumbersPicked = true;
-            return null;
-        }
-        var nextNumber = shuffledNumbers[currentIndex];
-        currentIndex++;
-        return nextNumber;
+    if(unit===0){
+        return ones[tens]+" Zero – "+tensNames[tens]+"!";
     }
 
-    function updateRandomNumberDisplay() {
-        if (allNumbersPicked) {
-            clearInterval(intervalId); // Stop counter if all numbers are picked
-            return;
-        }
-        var randomNumber = getNextRandomNumber();
-        if (randomNumber === null) {
-            return;
-        }
-        randomNumberDisplay.innerHTML = '';
-        randomNumbers.push(randomNumber);
-        if (randomNumbers.length > 3) {
-            randomNumbers.shift();
-        }
-        randomNumbers.forEach(function(number, index) {
-            var randomNumberSpan = document.createElement('span');
-            randomNumberSpan.textContent = number;
-            randomNumberSpan.classList.add('randomNumber');
-            if (index === randomNumbers.length - 1) {
-                randomNumberSpan.classList.add('highlight');
-            }
-            randomNumberDisplay.appendChild(randomNumberSpan);
-            if (index !== randomNumbers.length - 1) {
-                randomNumberDisplay.appendChild(document.createTextNode(', '));
-            }
-        });
-        highlightPickedNumber(randomNumber);
-        
-        // Speak the generated random number
-        speakRandomNumber(randomNumber);
+    return ones[tens]+" "+ones[unit]+" – "+num+"!";
+}
+
+function initGame(){
+    numbers=[...Array(90).keys()].map(x=>x+1)
+        .sort(()=>Math.random()-0.5);
+    index=0;
+    isPlaying=false;
+    speechSynthesis.cancel();
+}
+
+initGame();
+
+function callNextNumber(){
+
+    if(!isPlaying) return;
+
+    if(index>=numbers.length){
+        isPlaying=false;
+        btn.textContent="▶ Play";
+        btn.className="play";
+        return;
     }
 
-    function highlightPickedNumber(number) {
-        var cells = document.querySelectorAll('td[data-number="' + number + '"]');
-        cells.forEach(function(cell) {
-            cell.classList.add('picked');
-        });
+    let num=numbers[index++];
+
+    previousNumbers.push(num);
+
+    if(previousNumbers.length>3){
+        previousNumbers.shift();
     }
 
-    function generateRandomNumber() {
-        updateRandomNumberDisplay();
-    }
-    
-    intervalId = setInterval(generateRandomNumber, 5000); // Update every second
+    let prevDisplay=previousNumbers.slice(0,-1);
 
-    // Function to speak the generated random number
-    function speakRandomNumber(number) {
-        var utterance = new SpeechSynthesisUtterance(number.toString());
-        speechSynthesis.speak(utterance);
-    }
+    document.getElementById("previousNumbers").textContent =
+        prevDisplay.length>0 ? prevDisplay.join(", ") +",": "";
 
-    // Function to pause the game
-    function pauseGame() {
-        clearInterval(intervalId);
-        document.getElementById('pauseButton').disabled = true; // Disable the "Pause" button
-        document.getElementById('playButton').disabled = false; // Enable the "Play" button
-    }
+    document.getElementById("randomNumberDisplay").textContent = num;
 
-    // Function to resume the game
-    function resumeGame() {
-        intervalId = setInterval(generateRandomNumber, 5000); // Resume the interval
-        document.getElementById('pauseButton').disabled = false; // Enable the "Pause" button
-        document.getElementById('playButton').disabled = true; // Disable the "Play" button
-    }
+    document.querySelectorAll('td[data-number="'+num+'"]')
+        .forEach(c=>c.classList.add("picked"));
 
-    // Function to restart the game (reload the page)
-    function restartGame() {
-      var confirmed = window.confirm('Are you sure you want to Reset the board');
-        if (confirmed) {
-         window.location.reload();
+    speechSynthesis.cancel();
 
-        }
-    }
+    let textToSpeak=getFunCall(num);
 
-    // On load, set the game status to paused and rename the "Resume" button as "Play"
-    window.onload = function() {
-        pauseGame();
-        document.getElementById('playButton').textContent = "Play";
+    let utter=new SpeechSynthesisUtterance(textToSpeak);
+    utter.volume = 1; utter.rate = 0.85; utter.pitch = 1;
+
+    utter.onend=function(){
+        timeoutId=setTimeout(callNextNumber,delayBetweenNumbers);
     };
+
+    speechSynthesis.speak(utter);
+}
+
+function togglePlay(){
+    if(isPlaying){
+        isPlaying=false;
+        speechSynthesis.cancel();
+        clearTimeout(timeoutId);
+        btn.textContent="▶ Play";
+        btn.className="play";
+    }else{
+        isPlaying=true;
+        btn.textContent="⏸ Pause";
+        btn.className="pause";
+        callNextNumber();
+    }
+}
+
+function changeSpeed(){
+    if(delayBetweenNumbers===1500){
+        delayBetweenNumbers=600;
+        speedBtn.textContent="Speed: Fast";
+    }else{
+        delayBetweenNumbers=1500;
+        speedBtn.textContent="Speed: Normal";
+    }
+}
+
+function restartGame(){
+
+    let confirmReset=confirm("Are you sure you want to restart the game?");
+    if(!confirmReset) return;
+
+    isPlaying=false;
+    speechSynthesis.cancel();
+    clearTimeout(timeoutId);
+
+    document.querySelectorAll(".picked")
+        .forEach(cell=>cell.classList.remove("picked"));
+
+    document.getElementById("randomNumberDisplay").textContent="";
+    document.getElementById("previousNumbers").textContent="";
+    previousNumbers=[];
+
+    initGame();
+
+    btn.textContent="▶ Play";
+    btn.className="play";
+}
+
+let btn=document.getElementById("playPauseBtn");
+let speedBtn=document.getElementById("speedBtn");
+
+btn.onclick=togglePlay;
+speedBtn.onclick=changeSpeed;
+
 </script>
 
 </body>
