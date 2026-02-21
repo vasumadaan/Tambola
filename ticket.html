@@ -82,14 +82,17 @@
 </table>
 
 <script>
+    var ticketBody = document.getElementById('ticketBody');
+    var submitBtn = document.getElementById('submitBtn');
 
-var ticketBody = document.getElementById('ticketBody');
-var submitBtn = document.getElementById('submitBtn');
-
-function generateSequence(start, end) {
-    var sequence = [];
-    for (var i = start; i <= end; i++) {
-        sequence.push(i);
+    // Optimized shuffle using Fisher-Yates
+    function shuffleArray(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
     }
     return sequence;
 }
@@ -104,74 +107,137 @@ function shuffleArray(array) {
     return array;
 }
 
-var shuffledNumbers = shuffleArray(generateSequence(1, 90));
-var currentIndex = 0;
-
-function getNextRandomNumber() {
-    if (currentIndex >= shuffledNumbers.length) {
-        // reset safely if exhausted
-        shuffledNumbers = shuffleArray(generateSequence(1, 90));
-        currentIndex = 0;
+    // Get column index for a number (0-8)
+    function getColumnIndex(num) {
+        if (num <= 9) return 0;
+        if (num === 90) return 8;
+        return Math.floor(num / 10);
     }
     var nextNumber = shuffledNumbers[currentIndex];
     currentIndex++;
     return nextNumber;
 }
 
-function generateTambolaTicket(numSections) {
-
-    ticketBody.innerHTML = '';
-
-    for (var section = 0; section < numSections; section++) {
-
-        for (var i = 0; i < 3; i++) {
-
-            var row = document.createElement('tr');
-            var oneRow = new Array(9).fill(0);
-            var numbersToPutBack = [];
-
-            var filledCount = 0;
-
-            while (filledCount < 5) {
-
-                var randomNumber = getNextRandomNumber();
-
-                if (!randomNumber) continue; // safety retry
-
-                var columnIndex = -1;
-
-                if (randomNumber === 90) {
-                    columnIndex = 8;
-                } else {
-                    columnIndex = Math.floor(randomNumber / 10);
+    // Generate a single ticket with guaranteed 15 numbers, 5 per row, at least 1 per column
+    function generateTicket(columnPools) {
+        var ticket = [[0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0]];
+        var rowCounts = [0, 0, 0];
+        var colCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        var placed = 0;
+        
+        // FIRST: Ensure each column gets at least one number
+        var availableRows = [0, 1, 2];
+        for (var col = 0; col < 9; col++) {
+            if (columnPools[col].length > 0) {
+                shuffleArray(availableRows);
+                // Find a row that has space
+                for (var i = 0; i < 3; i++) {
+                    var row = availableRows[i];
+                    if (rowCounts[row] < 5) {
+                        ticket[row][col] = columnPools[col].pop();
+                        rowCounts[row]++;
+                        colCounts[col]++;
+                        placed++;
+                        break;
+                    }
                 }
-
-                if (oneRow[columnIndex] !== 0) {
-                    numbersToPutBack.push(randomNumber);
-                    continue;
-                }
-
-                oneRow[columnIndex] = randomNumber;
-                filledCount++;
             }
-
-            shuffleArray(numbersToPutBack);
-            for (var k = 0; k < numbersToPutBack.length; k++) {
-                shuffledNumbers.push(numbersToPutBack[k]);
-            }
-
-            for (var j = 0; j < 9; j++) {
-                var cell = document.createElement('td');
-                var number = oneRow[j];
-
-                if (number !== 0) {
-                    cell.textContent = number;
-                    cell.addEventListener('click', function () {
-                        this.classList.toggle('selected');
-                    });
+        }
+        
+        // SECOND: Fill remaining slots to reach 15 numbers (5 per row)
+        if (placed < 15) {
+            var positions = [];
+            for (var r = 0; r < 3; r++) {
+                for (var c = 0; c < 9; c++) {
+                    if (ticket[r][c] === 0) {
+                        positions.push([r, c]);
+                    }
                 }
+            }
+            shuffleArray(positions);
+            
+            for (var i = 0; i < positions.length && placed < 15; i++) {
+                var pos = positions[i];
+                var row = pos[0];
+                var col = pos[1];
+                
+                if (rowCounts[row] < 5 && colCounts[col] < 3 && columnPools[col].length > 0) {
+                    ticket[row][col] = columnPools[col].pop();
+                    rowCounts[row]++;
+                    colCounts[col]++;
+                    placed++;
+                }
+            }
+        }
+        
+        // Sort numbers in each column
+        for (var col = 0; col < 9; col++) {
+            var nums = [];
+            for (var row = 0; row < 3; row++) {
+                if (ticket[row][col]) nums.push(ticket[row][col]);
+            }
+            nums.sort(function(a, b) { return a - b; });
+            
+            var idx = 0;
+            for (var row = 0; row < 3; row++) {
+                if (ticket[row][col]) ticket[row][col] = nums[idx++];
+            }
+        }
+        
+        return ticket;
+    }
 
-                row.appendChild(cell);
+    // Generate complete sheet of 6 tickets
+    function generateCompleteSheet() {
+        var columnPools = [[], [], [], [], [], [], [], [], []];
+        
+        // Distribute numbers into columns
+        for (var num = 1; num <= 90; num++) {
+            columnPools[getColumnIndex(num)].push(num);
+        }
+        
+        // Shuffle each pool once
+        for (var i = 0; i < 9; i++) {
+            shuffleArray(columnPools[i]);
+        }
+        
+        var sheet = [];
+        for (var t = 0; t < 6; t++) {
+            sheet.push(generateTicket(columnPools));
+        }
+        
+        return sheet;
+    }
+
+    // Optimized DOM rendering with fragment
+    function renderTickets(sheet, numTickets) {
+        var fragment = document.createDocumentFragment();
+        
+        for (var t = 0; t < numTickets; t++) {
+            var ticket = sheet[t];
+            
+            for (var row = 0; row < 3; row++) {
+                var tr = document.createElement('tr');
+                for (var col = 0; col < 9; col++) {
+                    var cell = document.createElement('td');
+                    var num = ticket[row][col];
+                    if (num) {
+                        cell.textContent = num;
+                        cell.onclick = function() {
+                            this.classList.toggle('selected');
+                        };
+                    }
+                    tr.appendChild(cell);
+                }
+                fragment.appendChild(tr);
+            }
+            
+            if (t < numTickets - 1) {
+                var spaceRow = document.createElement('tr');
+                var spaceCell = document.createElement('td');
+                spaceCell.colSpan = 9;
+                spaceRow.appendChild(spaceCell);
+                fragment.appendChild(spaceRow);
             }
 
             ticketBody.appendChild(row);
@@ -184,14 +250,23 @@ function generateTambolaTicket(numSections) {
             spaceRow.appendChild(spaceCell);
             ticketBody.appendChild(spaceRow);
         }
+        
+        ticketBody.innerHTML = '';
+        ticketBody.appendChild(fragment);
     }
 }
 
 submitBtn.addEventListener('click', function () {
 
-    var confirmed = window.confirm('Are you sure you want to generate the ticket?');
-
-    if (confirmed) {
+    // Event listener
+    submitBtn.addEventListener('click', function() {
+        var confirmed = window.confirm('Are you sure you want to generate the ticket?');
+        if (confirmed) {
+            var numTickets = parseInt(document.querySelector('input[name="sections"]:checked').value);
+            var sheet = generateCompleteSheet();
+            renderTickets(sheet, numTickets);
+        }
+    });
 
         var selectedSections = document.querySelector('input[name="sections"]:checked').value;
 

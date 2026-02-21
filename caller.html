@@ -2,71 +2,132 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Caller</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Table</title>
 <style>
-body {
-    font-family: Arial;
-    background: linear-gradient(to right,#eca1a6,#d5f4e6);
-    text-align:center;
-    padding:20px;
-}
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to right, #eca1a6, #d5f4e6); /* Gradient background */
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+    }
+    #randomNumberDisplay {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    .randomNumber {
+        font-weight: normal;
+        padding: 5px 10px;
+        border-radius: 5px;
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+    .highlight {
+        font-weight: bold;
+        font-size: 42px;
+        color: #d32f2f;
+        animation: popIn 0.3s ease;
+        padding: 10px 20px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    @keyframes popIn {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    table {
+        border-collapse: collapse;
+        width: 80%;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        font-size: 18px;
+        padding: 20px;
+    }
+    /* Custom class to change color on click */
+    .selected {
+        background-color: #ffcccb; /* Light red */
+    }
+    .picked {
+        background-color: #b6e2ff; /* Light blue */
+    }
 
-table {
-    border-collapse:collapse;
-    margin:auto;
-    background:white;
-    border-radius:10px;
-    box-shadow:0 6px 15px rgba(0,0,0,0.1);
-}
+    /* Style for buttons */
+    .button-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
 
-td,th {
-    border:1px solid #ddd;
-    padding:10px;
-    width:40px;
-}
+    .button-container button {
+        padding: 12px 28px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 16px;
+        font-weight: 600;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        min-width: 100px;
+    }
 
-.picked {
-    background:#b6e2ff;
-}
+    .button-container button:hover:not(:disabled) {
+        background-color: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
 
-.button-container {
-    margin-top:20px;
-}
+    .button-container button:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
 
-button {
-    padding:10px 20px;
-    margin:5px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    font-size:16px;
-}
+    .button-container button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 
-.play { background:#4CAF50; color:white; }
-.pause { background:#f44336; color:white; }
-.speed { background:#2196F3; color:white; }
+    .button-container button#pauseButton {
+        background-color: #ff9800;
+    }
 
-#numberDisplayWrapper {
-    text-align: center;
-    font-size: 34px;
-    margin-bottom: 20px;
-}
+    .button-container button#pauseButton:hover:not(:disabled) {
+        background-color: #e68900;
+    }
 
-#previousNumbers {
-    color: rgba(0,0,0,0.45); /* faded black */
-    font-weight: 400;
-    letter-spacing: 1px;
-}
+    .button-container button#restartButton {
+        background-color: #f44336;
+    }
 
-#randomNumberDisplay {
-    color: #e91e63;
-    font-weight: 700;
-    font-size: 42px;
-    margin-left: 5px;
-}
-
-
+    .button-container button#restartButton:hover:not(:disabled) {
+        background-color: #da190b;
+    }
 </style>
 </head>
 
@@ -83,162 +144,189 @@ button {
 </table>
 
 <div class="button-container">
-<button id="playPauseBtn" class="play">▶ Play</button>
-<button id="speedBtn" class="speed">Speed: Normal</button>
-<button onclick="restartGame()">Restart</button>
+    <button id="playButton" onclick="resumeGame()">Play</button>
+    <button id="pauseButton" onclick="pauseGame()" disabled>Pause</button>
+    <button id="restartButton" onclick="restartGame()">Restart</button>
 </div>
 
 <script>
+    var table = document.getElementById('numberTable');
+    for (var i = 1; i <= 9; i++) {
+        var row = table.insertRow();
+        for (var j = 1; j <= 10; j++) {
+            var cell = row.insertCell();
+            var number = (i - 1) * 10 + j;
+            cell.textContent = number;
+            cell.dataset.number = number;
+        }
+    }
 
-let table=document.getElementById("numberTable");
+    var randomNumberDisplay = document.getElementById('randomNumberDisplay');
+    var randomNumbers = [];
+    var allNumbersPicked = false;
+    var intervalId;
+    var isPaused = true;
+    var utteranceQueue = [];
+    var isSpeaking = false;
 
-// Build board
-for(let i=1;i<=9;i++){
-    let row=table.insertRow();
-    for(let j=1;j<=10;j++){
-        let cell=row.insertCell();
-        let num=(i-1)*10+j;
-        cell.textContent=num;
-        cell.dataset.number=num;
+    function shuffleArray(array) {
+        for (var i = array.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+    }
+
+    var shuffledNumbers = [];
+    for (var i = 1; i <= 90; i++) {
+        shuffledNumbers.push(i);
+    }
+    shuffleArray(shuffledNumbers);
+    var currentIndex = 0;
+
+    // Enhanced speech function: says digits then full number (e.g., "one one, eleven")
+    function speakNumber(number) {
+        var text = '';
+        var numStr = number.toString();
+        
+        // Say individual digits
+        var digitWords = {
+            '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine'
+        };
+        
+        var digits = [];
+        for (var i = 0; i < numStr.length; i++) {
+            digits.push(digitWords[numStr[i]]);
+        }
+        text = digits.join(' ') + ', ' + number;
+        
+        var utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Try to use a better voice if available
+        var voices = speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            var preferredVoice = voices.find(function(v) { 
+                return v.lang === 'en-US' || v.lang === 'en-GB'; 
+            });
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+        }
+        
+        utterance.onend = function() {
+            isSpeaking = false;
+            processQueue();
+        };
+        
+        utterance.onerror = function() {
+            isSpeaking = false;
+            processQueue();
+        };
+        
+        utteranceQueue.push(utterance);
+        processQueue();
+    }
+
+    function processQueue() {
+        if (!isSpeaking && utteranceQueue.length > 0) {
+            isSpeaking = true;
+            speechSynthesis.speak(utteranceQueue.shift());
+        }
+    }
+
+    function updateRandomNumberDisplay() {
+        if (allNumbersPicked) {
+            clearInterval(intervalId);
+            randomNumberDisplay.innerHTML = '<span class="highlight">Game Over!</span>';
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('playButton').disabled = true;
+            return;
+        }
+        
+        if (currentIndex >= shuffledNumbers.length) {
+            allNumbersPicked = true;
+            return;
+        }
+        
+        var randomNumber = shuffledNumbers[currentIndex];
+        currentIndex++;
+        
+        randomNumberDisplay.innerHTML = '';
+        randomNumbers.push(randomNumber);
+        if (randomNumbers.length > 3) {
+            randomNumbers.shift();
+        }
+        
+        randomNumbers.forEach(function(number, index) {
+            var span = document.createElement('span');
+            span.textContent = number;
+            span.classList.add('randomNumber');
+            if (index === randomNumbers.length - 1) {
+                span.classList.add('highlight');
+            }
+            randomNumberDisplay.appendChild(span);
+            if (index !== randomNumbers.length - 1) {
+                randomNumberDisplay.appendChild(document.createTextNode(', '));
+            }
+        });
+        
+        highlightPickedNumber(randomNumber);
+        speakNumber(randomNumber);
+    }
+
+    function highlightPickedNumber(number) {
+        var cell = document.querySelector('td[data-number="' + number + '"]');
+        if (cell) {
+            cell.classList.add('picked');
+        }
+    }
+
+    function pauseGame() {
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+        isPaused = true;
+        document.getElementById('pauseButton').disabled = true;
+        document.getElementById('playButton').disabled = false;
+        speechSynthesis.cancel(); // Stop any ongoing speech
+        utteranceQueue = [];
+        isSpeaking = false;
     }
 }
 
-let numbers=[];
-let index=0;
-let isPlaying=false;
-let delayBetweenNumbers=1500;
-let timeoutId=null;
-let previousNumbers=[];
-
-const ones=["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"];
-const tensNames=["","Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
-
-function getFunCall(num){
-
-    if(num<10){
-        return "Only number "+ones[num]+"!";
+    function resumeGame() {
+        if (!allNumbersPicked) {
+            intervalId = setInterval(updateRandomNumberDisplay, 5000);
+            isPaused = false;
+            document.getElementById('pauseButton').disabled = false;
+            document.getElementById('playButton').disabled = true;
+        }
     }
-
-    let tens=Math.floor(num/10);
-    let unit=num%10;
-
-    if(tens===unit){
-        return ones[tens]+" "+ones[unit]+" – "+num+"!";
-    }
-
-    if(unit===0){
-        return ones[tens]+" Zero – "+tensNames[tens]+"!";
-    }
-
-    return ones[tens]+" "+ones[unit]+" – "+num+"!";
 }
 
-function initGame(){
-    numbers=[...Array(90).keys()].map(x=>x+1)
-        .sort(()=>Math.random()-0.5);
-    index=0;
-    isPlaying=false;
-    speechSynthesis.cancel();
-}
-
-initGame();
-
-function callNextNumber(){
-
-    if(!isPlaying) return;
-
-    if(index>=numbers.length){
-        isPlaying=false;
-        btn.textContent="▶ Play";
-        btn.className="play";
-        return;
+    function restartGame() {
+        var confirmed = window.confirm('Are you sure you want to reset the board?');
+        if (confirmed) {
+            window.location.reload();
+        }
     }
 
-    let num=numbers[index++];
-
-    previousNumbers.push(num);
-
-    if(previousNumbers.length>3){
-        previousNumbers.shift();
+    // Load voices when available
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = function() {
+            speechSynthesis.getVoices();
+        };
     }
 
-    let prevDisplay=previousNumbers.slice(0,-1);
-
-    document.getElementById("previousNumbers").textContent =
-        prevDisplay.length>0 ? prevDisplay.join(", ") +",": "";
-
-    document.getElementById("randomNumberDisplay").textContent = num;
-
-    document.querySelectorAll('td[data-number="'+num+'"]')
-        .forEach(c=>c.classList.add("picked"));
-
-    speechSynthesis.cancel();
-
-    let textToSpeak=getFunCall(num);
-
-    let utter=new SpeechSynthesisUtterance(textToSpeak);
-    utter.volume = 1; utter.rate = 0.85; utter.pitch = 1;
-
-    utter.onend=function(){
-        timeoutId=setTimeout(callNextNumber,delayBetweenNumbers);
+    window.onload = function() {
+        randomNumberDisplay.innerHTML = '<span class="randomNumber">Press Play to start</span>';
+        pauseGame();
     };
-
-    speechSynthesis.speak(utter);
-}
-
-function togglePlay(){
-    if(isPlaying){
-        isPlaying=false;
-        speechSynthesis.cancel();
-        clearTimeout(timeoutId);
-        btn.textContent="▶ Play";
-        btn.className="play";
-    }else{
-        isPlaying=true;
-        btn.textContent="⏸ Pause";
-        btn.className="pause";
-        callNextNumber();
-    }
-}
-
-function changeSpeed(){
-    if(delayBetweenNumbers===1500){
-        delayBetweenNumbers=600;
-        speedBtn.textContent="Speed: Fast";
-    }else{
-        delayBetweenNumbers=1500;
-        speedBtn.textContent="Speed: Normal";
-    }
-}
-
-function restartGame(){
-
-    let confirmReset=confirm("Are you sure you want to restart the game?");
-    if(!confirmReset) return;
-
-    isPlaying=false;
-    speechSynthesis.cancel();
-    clearTimeout(timeoutId);
-
-    document.querySelectorAll(".picked")
-        .forEach(cell=>cell.classList.remove("picked"));
-
-    document.getElementById("randomNumberDisplay").textContent="";
-    document.getElementById("previousNumbers").textContent="";
-    previousNumbers=[];
-
-    initGame();
-
-    btn.textContent="▶ Play";
-    btn.className="play";
-}
-
-let btn=document.getElementById("playPauseBtn");
-let speedBtn=document.getElementById("speedBtn");
-
-btn.onclick=togglePlay;
-speedBtn.onclick=changeSpeed;
-
 </script>
 
 </body>
