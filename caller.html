@@ -187,17 +187,22 @@
         var text = '';
         var numStr = number.toString();
         
-        // Say individual digits
-        var digitWords = {
-            '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
-            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine'
-        };
-        
-        var digits = [];
-        for (var i = 0; i < numStr.length; i++) {
-            digits.push(digitWords[numStr[i]]);
+        // For single-digit numbers (1-9), say "single digit" then the number
+        if (number < 10) {
+            text = 'single digit ' + number.toString();
+        } else {
+            // For multi-digit numbers, say digits first, then the full number
+            var digitWords = {
+                '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+                '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine'
+            };
+            
+            var digits = [];
+            for (var i = 0; i < numStr.length; i++) {
+                digits.push(digitWords[numStr[i]]);
+            }
+            text = digits.join(' ') + ', ' + number;
         }
-        text = digits.join(' ') + ', ' + number;
         
         var utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 0.9; // Slightly slower for clarity
