@@ -19,13 +19,32 @@
         font-size: 24px;
         font-weight: bold;
         margin-bottom: 20px;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
     }
     .randomNumber {
         font-weight: normal;
+        padding: 5px 10px;
+        border-radius: 5px;
+        background-color: rgba(255, 255, 255, 0.7);
     }
     .highlight {
         font-weight: bold;
-        font-size: 32px;
+        font-size: 42px;
+        color: #d32f2f;
+        animation: popIn 0.3s ease;
+        padding: 10px 20px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    @keyframes popIn {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); opacity: 1; }
     }
     table {
         border-collapse: collapse;
@@ -59,32 +78,55 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
     }
 
     .button-container button {
-        margin: 0 10px;
-        padding: 10px 20px;
+        padding: 12px 28px;
         background-color: #4CAF50;
         color: white;
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         cursor: pointer;
-        transition: background-color 0.3s ease;
-        animation-duration: 0.5s;
+        transition: all 0.2s ease;
+        font-size: 16px;
+        font-weight: 600;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        min-width: 100px;
     }
 
-    .button-container button:hover {
+    .button-container button:hover:not(:disabled) {
         background-color: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
 
-    .button-container button:active {
-        animation-name: buttonClick;
+    .button-container button:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     }
 
-    @keyframes buttonClick {
-        0% { transform: scale(1); }
-        50% { transform: scale(0.9); }
-        100% { transform: scale(1); }
+    .button-container button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .button-container button#pauseButton {
+        background-color: #ff9800;
+    }
+
+    .button-container button#pauseButton:hover:not(:disabled) {
+        background-color: #e68900;
+    }
+
+    .button-container button#restartButton {
+        background-color: #f44336;
+    }
+
+    .button-container button#restartButton:hover:not(:disabled) {
+        background-color: #da190b;
     }
 </style>
 <script type="text/javascript" src="https://tiiny.host/ad-script.js"></script><script defer data-domain="vasu-tambola-game.tiiny.site" src="https://analytics.tiiny.site/js/plausible.js"></script></head>
@@ -99,9 +141,9 @@
 </table>
 
 <div class="button-container">
-    <button id="pauseButton" onclick="pauseGame()" disabled>Pause</button>
     <button id="playButton" onclick="resumeGame()">Play</button>
-    <button onclick="restartGame()">Restart</button>
+    <button id="pauseButton" onclick="pauseGame()" disabled>Pause</button>
+    <button id="restartButton" onclick="restartGame()">Restart</button>
 </div>
 
 <script>
@@ -112,22 +154,17 @@
             var cell = row.insertCell();
             var number = (i - 1) * 10 + j;
             cell.textContent = number;
-            cell.dataset.number = number; // Storing the number in data attribute
+            cell.dataset.number = number;
         }
     }
 
     var randomNumberDisplay = document.getElementById('randomNumberDisplay');
     var randomNumbers = [];
-    var allNumbersPicked = false; // Flag to track if all numbers are picked
-    var intervalId; // Declare intervalId globally
-
-    function generateSequence(start, end) {
-        var sequence = [];
-        for (var i = start; i <= end; i++) {
-            sequence.push(i);
-        }
-        return sequence;
-    }
+    var allNumbersPicked = false;
+    var intervalId;
+    var isPaused = true;
+    var utteranceQueue = [];
+    var isSpeaking = false;
 
     function shuffleArray(array) {
         for (var i = array.length - 1; i > 0; i--) {
@@ -136,99 +173,154 @@
             array[i] = array[j];
             array[j] = temp;
         }
-        return array;
     }
-    var shuffledNumbers = shuffleArray(generateSequence(1, 90));
+
+    var shuffledNumbers = [];
+    for (var i = 1; i <= 90; i++) {
+        shuffledNumbers.push(i);
+    }
+    shuffleArray(shuffledNumbers);
     var currentIndex = 0;
 
-    function getNextRandomNumber() {
-        if (currentIndex >= shuffledNumbers.length) {
-            allNumbersPicked = true;
-            return null;
+    // Enhanced speech function: says digits then full number (e.g., "one one, eleven")
+    function speakNumber(number) {
+        var text = '';
+        var numStr = number.toString();
+        
+        // Say individual digits
+        var digitWords = {
+            '0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine'
+        };
+        
+        var digits = [];
+        for (var i = 0; i < numStr.length; i++) {
+            digits.push(digitWords[numStr[i]]);
         }
-        var nextNumber = shuffledNumbers[currentIndex];
-        currentIndex++;
-        return nextNumber;
+        text = digits.join(' ') + ', ' + number;
+        
+        var utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Try to use a better voice if available
+        var voices = speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            var preferredVoice = voices.find(function(v) { 
+                return v.lang === 'en-US' || v.lang === 'en-GB'; 
+            });
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+        }
+        
+        utterance.onend = function() {
+            isSpeaking = false;
+            processQueue();
+        };
+        
+        utterance.onerror = function() {
+            isSpeaking = false;
+            processQueue();
+        };
+        
+        utteranceQueue.push(utterance);
+        processQueue();
+    }
+
+    function processQueue() {
+        if (!isSpeaking && utteranceQueue.length > 0) {
+            isSpeaking = true;
+            speechSynthesis.speak(utteranceQueue.shift());
+        }
     }
 
     function updateRandomNumberDisplay() {
         if (allNumbersPicked) {
-            clearInterval(intervalId); // Stop counter if all numbers are picked
+            clearInterval(intervalId);
+            randomNumberDisplay.innerHTML = '<span class="highlight">Game Over!</span>';
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('playButton').disabled = true;
             return;
         }
-        var randomNumber = getNextRandomNumber();
-        if (randomNumber === null) {
+        
+        if (currentIndex >= shuffledNumbers.length) {
+            allNumbersPicked = true;
             return;
         }
+        
+        var randomNumber = shuffledNumbers[currentIndex];
+        currentIndex++;
+        
         randomNumberDisplay.innerHTML = '';
         randomNumbers.push(randomNumber);
         if (randomNumbers.length > 3) {
             randomNumbers.shift();
         }
+        
         randomNumbers.forEach(function(number, index) {
-            var randomNumberSpan = document.createElement('span');
-            randomNumberSpan.textContent = number;
-            randomNumberSpan.classList.add('randomNumber');
+            var span = document.createElement('span');
+            span.textContent = number;
+            span.classList.add('randomNumber');
             if (index === randomNumbers.length - 1) {
-                randomNumberSpan.classList.add('highlight');
+                span.classList.add('highlight');
             }
-            randomNumberDisplay.appendChild(randomNumberSpan);
+            randomNumberDisplay.appendChild(span);
             if (index !== randomNumbers.length - 1) {
                 randomNumberDisplay.appendChild(document.createTextNode(', '));
             }
         });
-        highlightPickedNumber(randomNumber);
         
-        // Speak the generated random number
-        speakRandomNumber(randomNumber);
+        highlightPickedNumber(randomNumber);
+        speakNumber(randomNumber);
     }
 
     function highlightPickedNumber(number) {
-        var cells = document.querySelectorAll('td[data-number="' + number + '"]');
-        cells.forEach(function(cell) {
+        var cell = document.querySelector('td[data-number="' + number + '"]');
+        if (cell) {
             cell.classList.add('picked');
-        });
-    }
-
-    function generateRandomNumber() {
-        updateRandomNumberDisplay();
-    }
-    
-    intervalId = setInterval(generateRandomNumber, 5000); // Update every second
-
-    // Function to speak the generated random number
-    function speakRandomNumber(number) {
-        var utterance = new SpeechSynthesisUtterance(number.toString());
-        speechSynthesis.speak(utterance);
-    }
-
-    // Function to pause the game
-    function pauseGame() {
-        clearInterval(intervalId);
-        document.getElementById('pauseButton').disabled = true; // Disable the "Pause" button
-        document.getElementById('playButton').disabled = false; // Enable the "Play" button
-    }
-
-    // Function to resume the game
-    function resumeGame() {
-        intervalId = setInterval(generateRandomNumber, 5000); // Resume the interval
-        document.getElementById('pauseButton').disabled = false; // Enable the "Pause" button
-        document.getElementById('playButton').disabled = true; // Disable the "Play" button
-    }
-
-    // Function to restart the game (reload the page)
-    function restartGame() {
-      var confirmed = window.confirm('Are you sure you want to Reset the board');
-        if (confirmed) {
-         window.location.reload();
-
         }
     }
 
-    // On load, set the game status to paused and rename the "Resume" button as "Play"
+    function pauseGame() {
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+        isPaused = true;
+        document.getElementById('pauseButton').disabled = true;
+        document.getElementById('playButton').disabled = false;
+        speechSynthesis.cancel(); // Stop any ongoing speech
+        utteranceQueue = [];
+        isSpeaking = false;
+    }
+
+    function resumeGame() {
+        if (!allNumbersPicked) {
+            intervalId = setInterval(updateRandomNumberDisplay, 5000);
+            isPaused = false;
+            document.getElementById('pauseButton').disabled = false;
+            document.getElementById('playButton').disabled = true;
+        }
+    }
+
+    function restartGame() {
+        var confirmed = window.confirm('Are you sure you want to reset the board?');
+        if (confirmed) {
+            window.location.reload();
+        }
+    }
+
+    // Load voices when available
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = function() {
+            speechSynthesis.getVoices();
+        };
+    }
+
     window.onload = function() {
+        randomNumberDisplay.innerHTML = '<span class="randomNumber">Press Play to start</span>';
         pauseGame();
-        document.getElementById('playButton').textContent = "Play";
     };
 </script>
 
